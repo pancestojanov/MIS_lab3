@@ -32,6 +32,11 @@ dependencies:
     sdk: flutter
   firebase_core: ^2.25.4
   firebase_auth: ^4.17.4
+  table_calendar: ^3.0.1
+  syncfusion_flutter_calendar: ^21.2.3
+  awesome_notifications: ^0.8.3
+  flutter_local_notifications: ^16.3.0
+  nanoid:
 
 
   # The following adds the Cupertino Icons font to your application.

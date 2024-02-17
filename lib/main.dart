@@ -4,6 +4,7 @@ import 'firebase.dart';
 import 'exam.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'examWidget.dart';
+import 'calendar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +42,13 @@ class MainListScreenState extends State<MainListScreen> {
     Exam(course: 'Calculus', timestamp: DateTime(2024, 01, 16, 08, 00))
   ];
 
+  void _openCalendar(BuildContext ctx){
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => MyCalendar()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -52,6 +60,10 @@ class MainListScreenState extends State<MainListScreen> {
             onPressed: () => FirebaseAuth.instance.currentUser != null
                 ? _addExamFunction(context)
                 : _navigateToSignInPage(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.edit_calendar),
+            onPressed: () => _openCalendar(context),
           ),
           IconButton(
             icon: const Icon(Icons.login),
@@ -273,7 +285,7 @@ class AuthScreenState extends State<AuthScreen> {
             ElevatedButton(
               onPressed: _navigateToHome,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey
+                  backgroundColor: Colors.grey
               ),
               child: const Text('Back to main screen', style: TextStyle(color: Colors.white),),
             ),
