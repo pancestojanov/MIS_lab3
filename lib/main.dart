@@ -1,48 +1,199 @@
-import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase.dart';
-import 'exam.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'examWidget.dart';
-import 'calendar.dart';
+import 'package:flutter/material.dart';
+import 'package:lab3_193156/exam.dart';
+import 'package:lab3_193156/calendar.dart';
+import 'package:lab3_193156/notifications.dart';
+import 'package:lab3_193156/examWidget.dart';
+import 'package:intl/intl.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'firebase.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-void main() async {
+import './register.dart';
+import './login.dart';
+import './map.dart';
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const MyApp());
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const MainListScreen(),
-        '/login': (context) => const AuthScreen(isLogin: true),
-        '/register': (context) => const AuthScreen(isLogin: false),
-      },
+      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: HomePage(),
     );
   }
 }
 
-class MainListScreen extends StatefulWidget {
-  const MainListScreen({super.key});
-
+class HomePage extends StatelessWidget {
   @override
-  MainListScreenState createState() => MainListScreenState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Exams Schedule',style: TextStyle(
+            color: Colors.blueGrey,
+            fontSize: 24,
+            fontWeight: FontWeight.bold
+        ),
+        ),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginPage()),
+                );
+                // NotificationService().showNotifications();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey, // Background color
+                // Text color
+                padding: EdgeInsets.symmetric(vertical: 15, horizontal: 30), // Padding
+                shape: RoundedRectangleBorder( // Border radius
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                textStyle: TextStyle( // Text style
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+                elevation: 3,
+              ),
+              child: Text('Login', style: TextStyle(
+                color: Colors.white,
+              ),),
+            ),
+            ElevatedButton(
+
+
+              onPressed: () {
+                // Navigate to the registration page
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => RegistrationPage()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey,
+
+                padding: EdgeInsets.symmetric(vertical: 15,horizontal: 30),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)
+                ),
+                textStyle: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+                elevation: 3,
+              ),
+              child: Text('Register', style: TextStyle(
+                color: Colors.white,
+              ),
+              ),
+            ),
+            SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class MainListScreenState extends State<MainListScreen> {
-  List<Exam> exams = [
-    Exam(course: 'Web design', timestamp: DateTime(2024, 01, 26,14,30)),
-    Exam(course: 'Data mining', timestamp: DateTime(2024, 02, 12,12, 00)),
-    Exam(course: 'Calculus', timestamp: DateTime(2024, 01, 16, 08, 00))
-  ];
+class MyHomePage extends StatefulWidget {
+  const MyHomePage({Key? key, required this.title}) : super(key: key);
 
-  void _openCalendar(BuildContext ctx){
+  final String title;
+
+  @override
+  State<MyHomePage> createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  List<ExamAppointment> _examAppointments = [];
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+  FlutterLocalNotificationsPlugin();
+
+  void _addExamAppointment(BuildContext ctx) {
+    showModalBottomSheet(
+      context: ctx,
+      builder: (_) {
+        return GestureDetector(
+          onTap: () {},
+          child: NovElement(_addNewAppointmentToList),
+          behavior: HitTestBehavior.opaque,
+        );
+      },
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExamAppointments();
+  }
+
+  void _loadExamAppointments() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.email)
+          .collection('examAppointments')
+          .get();
+
+      final appointments = querySnapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return ExamAppointment(
+          id: doc.id,
+          examName: data['examName'],
+          date: (data['date'] as Timestamp).toDate(),
+          longitude: data['longitude'],
+          latitude: data['latitude'],
+        );
+      }).toList();
+
+      setState(() {
+        _examAppointments = appointments;
+      });
+    }
+  }
+
+  void _addNewAppointmentToList(ExamAppointment ea) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.email)
+          .collection('examAppointments')
+          .add({
+        'examName': ea.examName,
+        'date': ea.date,
+        'longitude': ea.longitude,
+        'latitude': ea.latitude,
+      });
+      _loadExamAppointments();
+    }
+  }
+
+  void _openCalendar(BuildContext ctx) {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => MyCalendar()),
@@ -51,245 +202,83 @@ class MainListScreenState extends State<MainListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Exams Schedule'),
-        actions: [
+        title: Text(widget.title),
+        actions: <Widget>[
           IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => FirebaseAuth.instance.currentUser != null
-                ? _addExamFunction(context)
-                : _navigateToSignInPage(context),
+            icon: Icon(Icons.add),
+            onPressed: () => _addExamAppointment(context),
           ),
           IconButton(
-            icon: const Icon(Icons.edit_calendar),
+            icon: Icon(Icons.edit_calendar),
             onPressed: () => _openCalendar(context),
           ),
           IconButton(
-            icon: const Icon(Icons.login),
-            onPressed: _signOut,
+            onPressed: () {
+              NotificationService().showNotifications();
+            },
+            icon: Icon(Icons.notifications),
+            iconSize: 40,
+            color: Colors.grey,
           ),
         ],
       ),
-      body: GridView.builder(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 8.0,
-          mainAxisSpacing: 8.0,
-        ),
-        itemCount: exams.length,
-        itemBuilder: (context, index) {
-          final course = exams[index].course;
-          final timestamp = exams[index].timestamp;
-
-          return Card(
-              color: Colors.orangeAccent.shade100,
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      course,
-                      style: const TextStyle(fontWeight: FontWeight.bold,fontSize: 22,),
+      body: Center(
+        child: _examAppointments.isEmpty
+            ? Text("There are no exam appointements")
+            : ListView.builder(
+          itemBuilder: (ctx, index) {
+            return Card(
+              elevation: 3,
+              margin: EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+              child: Column(
+                children: [
+                  ListTile(
+                    title: Text(_examAppointments[index].examName),
+                    subtitle: Text(DateFormat('dd.MM.yyyy').format(
+                        _examAppointments[index].date!)),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MapView(
+                            latitude: double.tryParse(
+                                _examAppointments[index].latitude)!,
+                            longitude: double.tryParse(
+                                _examAppointments[index].longitude)!,
+                            locationName:
+                            _examAppointments[index].examName,
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent, // Background color
+                      // Text color
+                      padding: EdgeInsets.symmetric(vertical: 15, horizontal: 30), // Padding
+                      shape: RoundedRectangleBorder( // Border radius
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      textStyle: TextStyle( // Text style
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      elevation: 3,
                     ),
-                    const SizedBox(height: 8.0),
-                    Text(
-                      timestamp.toString(),
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                  ],
-                ),
+                    child: Text('See Location',style: TextStyle(
+                      color: Colors.white,
+                    ),),
+                  ),
+                ],
               ),
-              elevation: 10, // Add elevation for shadow effect
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8), // Add rounded corners
-                  side: BorderSide(color: Colors.black)
-              )// Add border color
-          );
-        },
-      ),
-    );
-  }
-
-  Future<void> _signOut() async {
-    await FirebaseAuth.instance.signOut();
-  }
-
-  void _navigateToSignInPage(BuildContext context) {
-    Future.delayed(Duration.zero, () {
-      Navigator.pushReplacementNamed(context, '/login');
-    });
-  }
-
-  Future<void> _addExamFunction(BuildContext context) async {
-    return showModalBottomSheet(
-        context: context,
-        builder: (_) {
-          return GestureDetector(
-            onTap: () {},
-            behavior: HitTestBehavior.opaque,
-            child: ExamWidget(
-              addExam: _addExam,
-            ),
-          );
-        });
-  }
-
-  void _addExam(Exam exam) {
-    setState(() {
-      exams.add(exam);
-    });
-  }
-}
-
-class AuthScreen extends StatefulWidget {
-  final bool isLogin;
-
-  const AuthScreen({super.key, required this.isLogin});
-
-  @override
-  AuthScreenState createState() => AuthScreenState();
-}
-
-class AuthScreenState extends State<AuthScreen> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final GlobalKey<ScaffoldMessengerState> _scaffoldKey =
-  GlobalKey<ScaffoldMessengerState>();
-
-  Future<void> _authAction() async {
-    try {
-      if (widget.isLogin) {
-        await _auth.signInWithEmailAndPassword(
-          email: _emailController.text,
-          password: _passwordController.text,
-        );
-        _showSuccessDialog(
-            "Login Successful", "You have successfully logged in!");
-        _navigateToHome();
-      } else {
-        await _auth.createUserWithEmailAndPassword(
-          email: _emailController.text,
-          password: _passwordController.text,
-        );
-        _showSuccessDialog(
-            "Registration Successful", "You have successfully registered!");
-        _navigateToLogin();
-      }
-    } catch (e) {
-      _showErrorDialog(
-          "Authentication Error", "Error during authentication: $e");
-    }
-  }
-
-  void _showSuccessDialog(String title, String message) {
-    _scaffoldKey.currentState?.showSnackBar(SnackBar(
-      content: Text(message),
-      duration: const Duration(seconds: 2),
-    ));
-  }
-
-  void _showErrorDialog(String title, String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text("OK"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _navigateToHome() {
-    Future.delayed(Duration.zero, () {
-      Navigator.pushReplacementNamed(context, '/');
-    });
-  }
-
-  void _navigateToLogin() {
-    Future.delayed(Duration.zero, () {
-      Navigator.pushReplacementNamed(context, '/login');
-    });
-  }
-
-  void _navigateToRegister() {
-    Future.delayed(Duration.zero, () {
-      Navigator.pushReplacementNamed(context, '/register');
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: widget.isLogin ? const Text("Login") : const Text("Register"),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextField(
-
-              controller: _emailController,
-              decoration: const InputDecoration(labelText: "E-mail"),
-            ),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: "Password"),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _authAction,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey,
-              ),
-              child: Text(
-                widget.isLogin ? "Sign In" : "Register",
-                style: TextStyle(color: Colors.white), // Change button text color
-              ),
-
-            ),
-            if (!widget.isLogin)
-              ElevatedButton(
-                onPressed: _navigateToLogin,
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey
-                ),
-                child: const Text(
-                  'Already have an account?',
-                  style: TextStyle(color: Colors.white), // Change button text color
-                ),
-              ),
-            if (widget.isLogin)
-              ElevatedButton(
-                onPressed: _navigateToRegister,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey,
-                ),
-                child: const Text('Sign up', style: TextStyle(color: Colors.white),),
-
-              ),
-            ElevatedButton(
-              onPressed: _navigateToHome,
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey
-              ),
-              child: const Text('Back to main screen', style: TextStyle(color: Colors.white),),
-            ),
-          ],
+            );
+          },
+          itemCount: _examAppointments.length,
         ),
       ),
     );

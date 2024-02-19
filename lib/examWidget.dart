@@ -1,108 +1,84 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'exam.dart';
+import 'package:nanoid/nanoid.dart';
+import 'package:intl/intl.dart';
 
-class ExamWidget extends StatefulWidget {
-  final Function(Exam) addExam;
+import '../exam.dart';
 
-  const ExamWidget({required this.addExam, super.key});
+class NovElement extends StatefulWidget{
+
+  final Function addExamAppointment;
+
+  NovElement(this.addExamAppointment);
 
   @override
-  ExamWidgetState createState() => ExamWidgetState();
+  State<StatefulWidget> createState() => _NovElementState();
 }
 
-class ExamWidgetState extends State<ExamWidget> {
-  final TextEditingController subjectController = TextEditingController();
-  DateTime selectedDate = DateTime.now();
-  TimeOfDay selectedTime = TimeOfDay.now();
+class _NovElementState extends State<NovElement>{
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? datePicked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-    );
+  final _examNameController = TextEditingController();
+  late DateTime? _selectedDate = null;
 
-    if (datePicked != null && datePicked != selectedDate) {
-      setState(() {
-        selectedDate = datePicked;
-      });
+  late String examName;
+  // late String date;
+
+  void _submitData(){
+    if(_examNameController.text.isEmpty || _selectedDate == null){
+      return;
     }
+    final insertedExamTitle = _examNameController.text;
+    final latitude = '42.00423'; // longitude and latitude for FINKI
+    final longitude = '21.40954';
+    final examAppointment = ExamAppointment(id:nanoid(5), examName: insertedExamTitle, date: _selectedDate,latitude: latitude,longitude: longitude);
+    widget.addExamAppointment(examAppointment);
+    Navigator.of(context).pop();
   }
 
-  void _selectTime(BuildContext context) async {
-    final TimeOfDay? timePicked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(selectedDate),
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+        context: context,
+        initialDate: DateTime.now(),
+        firstDate: DateTime(1900),
+        lastDate: DateTime(2100)
     );
-
-    if (timePicked != null && timePicked != selectedTime) {
+    if (picked != null && picked != _selectedDate)
       setState(() {
-        selectedDate = DateTime(
-          selectedDate.year,
-          selectedDate.month,
-          selectedDate.day,
-          timePicked.hour,
-          timePicked.minute,
-        );
+        _selectedDate = picked;
       });
-    }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context){
     return Container(
-      color: Colors.white70,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: subjectController,
-              decoration: const InputDecoration(labelText: 'Subject'),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                    'Date: ${selectedDate.toLocal().toString().split(' ')[0]}'),
-                ElevatedButton(
-                  child: const Text('Select Date'),
-                  onPressed: () => _selectDate(context),
+      padding: EdgeInsets.all(8),
+      child: Column(
+        children: [
+          TextField(
+            controller: _examNameController,
+            decoration: InputDecoration(labelText: "Exam Name:"),
+            onSubmitted: (_) => _submitData(),
+          ),
+          GestureDetector(
+            onTap: () => _selectDate(context),
+            child: AbsorbPointer(
+              child: TextField(
+                decoration: InputDecoration(
+                  labelText: "Date:",
+                  suffixIcon: Icon(Icons.calendar_today),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                    'Time: ${selectedDate.toLocal().toString().split(' ')[1].substring(0, 5)}'),
-
-                ElevatedButton(
-                  onPressed: () => _selectTime(context),
-                  child: const Text('Select Time'),
+                controller: TextEditingController(
+                  text: _selectedDate == null ? '' : DateFormat.yMMMd().format(_selectedDate!),
                 ),
-              ],
+              ),
             ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () {
-                Exam exam = Exam(
-                  course: subjectController.text,
-                  timestamp: selectedDate,
-                );
-                widget.addExam(exam);
-                Navigator.pop(context);
-              },
-              child: const Text('Add Exam'),
-            ),
-          ],
-        ),
+          ),
+          TextButton(
+            onPressed: _submitData,
+            child: Text("Add"),
+          )
+        ],
       ),
     );
   }
-
 }

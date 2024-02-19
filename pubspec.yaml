@@ -37,6 +37,9 @@ dependencies:
   awesome_notifications: ^0.8.3
   flutter_local_notifications: ^16.3.0
   nanoid:
+  google_maps_flutter: ^2.2.0
+  url_launcher: ^6.0.9
+  cloud_firestore: ^4.15.4
 
 
   # The following adds the Cupertino Icons font to your application.

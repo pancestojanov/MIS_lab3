@@ -1,9 +1,15 @@
-class Exam {
-  String course;
-  DateTime timestamp;
+class ExamAppointment {
+  final String id;
+  final String examName;
+  final DateTime? date;
+  final String longitude;
+  final String latitude;
 
-  Exam({
-    required this.course,
-    required this.timestamp,
+  ExamAppointment({
+    required this.id,
+    required this.examName,
+    this.date,
+    required this.longitude,
+    required this.latitude,
   });
 }
